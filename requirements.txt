@@ -3,9 +3,10 @@ pip==23.2.1
 flask==2.3.3
 werkzeug==2.3.7
 tensorflow==2.12.0
-numpy==1.24.3
+numpy==1.23.5
 pillow==10.0.0
 firebase-admin==6.2.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
+
 
