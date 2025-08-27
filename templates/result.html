@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Result</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .report-card {
+            max-width: 500px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .report-header h1 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        .report-header h2 {
+            color: #7f8c8d;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .result-badge {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            background-color: rgba(46, 204, 113, 0.1);
+            border: 2px solid #2ecc71;
+            color: #2ecc71;
+        }
+        .result-badge.disease {
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 2px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .confidence-meter {
+            margin: 25px 0;
+        }
+        .meter-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+        .meter-bar {
+            height: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 5px;
+            width: 0;
+            transition: width 1s;
+        }
+        .confidence-value {
+            text-align: right;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-outline {
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+        .btn-outline:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-card">
+        <div class="report-header">
+            <h1>K.L.N. COLLEGE OF ENGINEERING</h1>
+            <h2>DEPARTMENT OF ELECTRONICS AND COMMUNICATION ENGINEERING</h2>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3>ANALYSIS REPORT</h3>
+            <div style="display: flex; justify-content: space-between;">
+                <span>DATE: {{ report.date }}</span>
+                <span>TIME: {{ report.time }}</span>
+            </div>
+        </div>
+
+        <div class="result-badge {{ 'disease' if report.prediction != 'HEALTHY' else '' }}">
+            <div style="font-size: 0.9rem;">OUTPUT</div>
+            <div style="font-size: 1.5rem; font-weight: 600;">{{ report.prediction }}</div>
+        </div>
+
+        <div class="confidence-meter">
+            <div class="meter-labels">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill" style="width: {{ report.confidence }}%"></div>
+            </div>
+            <div class="confidence-value">
+                Confidence: {{ report.confidence }}%
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/" class="btn btn-outline">New Analysis</a>
+            <a href="/history" class="btn btn-primary">View History</a>
+        </div>
+    </div>
+
+    <script>
+        // Animate confidence meter
+        document.addEventListener('DOMContentLoaded', function() {
+            const meter = document.querySelector('.meter-fill');
+            setTimeout(() => {
+                meter.style.width = meter.style.width;
+            }, 100);
+        });
+    </script>
+</body>
+</html>
