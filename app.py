@@ -10,7 +10,21 @@ from firebase_admin import credentials, firestore
 import csv
 from io import StringIO
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+
+# Load environment variables
+load_dotenv()
+
+# TensorFlow memory optimization (CRITICAL FOR RENDER)
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+
+# Limit GPU memory usage
+tf.config.set_soft_device_placement(True)
 
 app = Flask(__name__)
 
@@ -22,7 +36,7 @@ def initialize_firebase():
             "type": os.environ.get('FIREBASE_TYPE', 'service_account'),
             "project_id": os.environ.get('FIREBASE_PROJECT_ID'),
             "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID'),
-            "private_key": os.environ.get('FIREBASE_PRIVATE_KEY').replace('\\n', '\n'),
+            "private_key": os.environ.get('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
             "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL'),
             "client_id": os.environ.get('FIREBASE_CLIENT_ID'),
             "auth_uri": os.environ.get('FIREBASE_AUTH_URI', 'https://accounts.google.com/o/oauth2/auth'),
@@ -59,19 +73,32 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Load model
-model = tf.keras.models.load_model('poultry_disease_mobilenetv2.h5')
+# Load model with error handling
+try:
+    model = tf.keras.models.load_model('poultry_disease_mobilenetv2.h5')
+    print("✅ Model loaded successfully")
+except Exception as e:
+    print(f"❌ Error loading model: {str(e)}")
+    model = None
+
 class_names = ['COCCIDIOSIS', 'HEALTHY', 'SALMONELLA']
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def predict_image(image_path):
-    img = Image.open(image_path).resize((224, 224))
-    img_array = np.array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    prediction = model.predict(img_array)
-    return class_names[np.argmax(prediction)], float(np.max(prediction))
+    if model is None:
+        return "Model not loaded", 0.0
+        
+    try:
+        img = Image.open(image_path).resize((224, 224))
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+        prediction = model.predict(img_array, verbose=0)
+        return class_names[np.argmax(prediction)], float(np.max(prediction))
+    except Exception as e:
+        print(f"Error predicting image: {str(e)}")
+        return "Error", 0.0
 
 def save_to_firestore(data):
     if not db:
@@ -108,6 +135,9 @@ def upload_file():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
             file.save(filepath)
             
             prediction, confidence = predict_image(filepath)
@@ -178,4 +208,5 @@ def download():
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
