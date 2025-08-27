@@ -1,8 +1,9 @@
 flask==2.3.3
 werkzeug==2.3.7
-tensorflow==2.13.0
+tensorflow==2.10.1
 numpy==1.24.3
 pillow==10.0.0
 firebase-admin==6.2.0
 python-dotenv==1.0.0
+
 gunicorn==21.2.0
