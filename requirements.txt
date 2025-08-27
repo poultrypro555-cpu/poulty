@@ -1,15 +1,7 @@
-# Core ML stack
-tensorflow==2.12.0
-keras==2.12.0
-numpy==1.23.5
-h5py==3.8.0
-
-# Image processing
-Pillow==9.5.0
-
-# Web serving
-Flask==2.3.2
-gunicorn==20.1.0
-
-# Visualization (if needed for local training)
-matplotlib==3.7.1
+tensorflow==2.19.0
+keras==3.10.0
+flask==3.0.3
+gunicorn==22.0.0
+pillow==10.4.0
+numpy==1.26.4
+matplotlib==3.9.2
