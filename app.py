@@ -75,7 +75,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Load model with error handling
 try:
-    model = tf.keras.models.load_model('poultry_disease_mobilenetv2.h5')
+    model = tf.keras.models.load_model('MobileNetV2_Chicken_Disease_Final.h5')
     print("✅ Model loaded successfully")
 except Exception as e:
     print(f"❌ Error loading model: {str(e)}")
@@ -210,3 +210,4 @@ if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
