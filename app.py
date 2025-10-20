@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, make_response
 import os
 from werkzeug.utils import secure_filename
 import tensorflow as tf
@@ -7,101 +7,154 @@ from PIL import Image
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
+import csv
+from io import StringIO
 from dotenv import load_dotenv
+from tensorflow.keras.applications.efficientnet import preprocess_input
 
-# Load .env credentials
+# Load environment variables
 load_dotenv()
+
+# TensorFlow GPU optimization
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+tf.config.set_soft_device_placement(True)
 
 app = Flask(__name__)
 
-# Configuration
+# Initialize Firebase
+def initialize_firebase():
+    try:
+        # Use service account key file if available, otherwise use environment variables
+        if os.path.exists('serviceAccountKey.json'):
+            cred = credentials.Certificate('serviceAccountKey.json')
+        else:
+            firebase_config = {
+                "type": os.environ.get('FIREBASE_TYPE', 'service_account'),
+                "project_id": os.environ.get('FIREBASE_PROJECT_ID'),
+                "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID'),
+                "private_key": os.environ.get('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
+                "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL'),
+                "client_id": os.environ.get('FIREBASE_CLIENT_ID'),
+                "auth_uri": os.environ.get('FIREBASE_AUTH_URI', 'https://accounts.google.com/o/oauth2/auth'),
+                "token_uri": os.environ.get('FIREBASE_TOKEN_URI', 'https://oauth2.googleapis.com/token'),
+                "auth_provider_x509_cert_url": os.environ.get('FIREBASE_AUTH_PROVIDER_CERT_URL', 'https://www.googleapis.com/oauth2/v1/certs'),
+                "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_CERT_URL'),
+                "universe_domain": os.environ.get('FIREBASE_UNIVERSE_DOMAIN', 'googleapis.com')
+            }
+            cred = credentials.Certificate(firebase_config)
+        
+        firebase_admin.initialize_app(cred)
+        print("Firebase initialized successfully")
+        return firestore.client()
+    except Exception as e:
+        print(f"Firebase initialization failed: {str(e)}")
+        return None
+
+db = initialize_firebase()
+
+# Flask config
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Firebase setup (optional)
-db = None
+# Load your EfficientNetB3 model
 try:
-    firebase_config = {
-        "type": os.environ.get('FIREBASE_TYPE', 'service_account'),
-        "project_id": os.environ.get('FIREBASE_PROJECT_ID'),
-        "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID'),
-        "private_key": os.environ.get('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
-        "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL'),
-        "client_id": os.environ.get('FIREBASE_CLIENT_ID'),
-        "auth_uri": os.environ.get('FIREBASE_AUTH_URI', 'https://accounts.google.com/o/oauth2/auth'),
-        "token_uri": os.environ.get('FIREBASE_TOKEN_URI', 'https://oauth2.googleapis.com/token'),
-        "auth_provider_x509_cert_url": os.environ.get('FIREBASE_AUTH_PROVIDER_CERT_URL', 'https://www.googleapis.com/oauth2/v1/certs'),
-        "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_CERT_URL'),
-    }
-    cred = credentials.Certificate(firebase_config)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    print("✅ Firebase initialized")
-except Exception as e:
-    print("❌ Firebase disabled:", e)
-    db = None
-
-# Model loading
-MODEL_PATH = 'final_mobilenetv2_chicken.h5'
-class_names = ['COCCIDIOSIS', 'HEALTHY', 'SALMONELLA']
-model = None
-try:
-    if os.path.exists(MODEL_PATH):
-        model = tf.keras.models.load_model(MODEL_PATH)
-        print(f"✅ Model loaded: {MODEL_PATH}")
-    else:
-        print(f"❌ Model not found: {MODEL_PATH}")
-except Exception as e:
-    print(f"❌ Model loading failed: {e}")
+    # Try multiple possible paths for the model
+    model_paths = [
+        'poultry_disease_mobilenetv2.h5'
+    ]
+    
     model = None
+    for model_path in model_paths:
+        try:
+            model = tf.keras.models.load_model(model_path)
+            print(f"✅ Model loaded successfully from {model_path}")
+            break
+        except:
+            continue
+    
+    if model is None:
+        raise Exception("Could not find model file in any known location")
+    
+    # Get class names from your training - MUST MATCH YOUR ACTUAL TRAINING ORDER!
+    class_names = ['Coccidiosis', 'Healthy', 'New Castle Disease', 'Salmonella']
+    print(f"Class names: {class_names}")
+    
+except Exception as e:
+    print(f"❌ Error loading model: {str(e)}")
+    model = None
+    class_names = []
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def preprocess_image(image_path, target_size=(224, 224)):
-    img = Image.open(image_path).convert('RGB')
-    img = img.resize(target_size)
-    img_array = np.array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    return img_array
-
 def predict_image(image_path):
+    if model is None:
+        return "Model not loaded", 0.0, []
+    
     try:
-        if model is not None:
-            img_array = preprocess_image(image_path)
-            prediction = model.predict(img_array, verbose=0)
-            probabilities = prediction[0]
-            probabilities = np.maximum(probabilities, 0)
-            prob_sum = np.sum(probabilities)
-            if prob_sum > 0:
-                probabilities = probabilities / prob_sum
-            else:
-                probabilities = np.full(3, 1/3)
-            all_probabilities = {
-                class_names[i]: float(probabilities[i]) * 100
-                for i in range(len(class_names))
-            }
-            predicted_class = class_names[np.argmax(probabilities)]
-            confidence = float(np.max(probabilities)) * 100
-            if all_probabilities['SALMONELLA'] >= 30:
-                return "SALMONELLA", all_probabilities['SALMONELLA'], all_probabilities
-            return predicted_class, confidence, all_probabilities
-        else:
-            fname = os.path.basename(image_path).lower()
-            if 'salmonella' in fname or 'salmo' in fname:
-                return "SALMONELLA", 89.5, {'COCCIDIOSIS': 5.5, 'HEALTHY': 5.0, 'SALMONELLA': 89.5}
-            elif 'cocci' in fname:
-                return "COCCIDIOSIS", 87.2, {'COCCIDIOSIS': 87.2, 'HEALTHY': 9.3, 'SALMONELLA': 3.5}
-            else:
-                return "HEALTHY", 85.8, {'COCCIDIOSIS': 8.7, 'HEALTHY': 85.8, 'SALMONELLA': 5.5}
+        # Load and preprocess image for EfficientNetB3 (300x300)
+        img = Image.open(image_path).convert('RGB')
+        
+        # Resize to match your model's input size (300x300 for EfficientNetB3)
+        img = img.resize((300, 300))
+        
+        # Convert to array
+        img_array = np.array(img)
+        
+        # EXPAND DIMS FIRST
+        img_array = np.expand_dims(img_array, axis=0)
+        
+        # USE THE EXACT SAME PREPROCESSING AS YOUR TRAINING
+        # For EfficientNet models, use the built-in preprocessing
+        img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+        
+        # Make prediction
+        prediction = model.predict(img_array, verbose=0)
+        
+        # DEBUG: Print raw predictions
+        print(f"Raw prediction values: {prediction}")
+        print(f"Predicted class index: {np.argmax(prediction)}")
+        
+        # Get top prediction
+        predicted_class = class_names[np.argmax(prediction)]
+        confidence = float(np.max(prediction))
+        
+        # Get confidence scores for all classes
+        confidence_scores = []
+        for i, class_name in enumerate(class_names):
+            confidence_scores.append({
+                'class': class_name,
+                'confidence': float(prediction[0][i]) * 100
+            })
+        
+        # Sort by confidence descending
+        confidence_scores.sort(key=lambda x: x['confidence'], reverse=True)
+        
+        # DEBUG: Print final results
+        print(f"Final prediction: {predicted_class} with {confidence*100:.2f}% confidence")
+        for score in confidence_scores:
+            print(f"  {score['class']}: {score['confidence']:.2f}%")
+        
+        return predicted_class, confidence * 100, confidence_scores
+        
     except Exception as e:
-        print(f"Prediction error: {e}")
-        return "HEALTHY", 80.0, {'COCCIDIOSIS': 12, 'HEALTHY': 80, 'SALMONELLA': 8}
+        print(f"Error predicting image: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return "Error", 0.0, []
 
 def save_to_firestore(data):
-    if not db: return False
+    if not db:
+        print("Firestore not available")
+        return False
     try:
         doc_ref = db.collection('poultry_results').document()
         doc_ref.set({
@@ -111,12 +164,13 @@ def save_to_firestore(data):
             'time': data['time'],
             'prediction': data['prediction'],
             'confidence': data['confidence'],
-            'all_probabilities': data.get('all_probabilities', {}),
+            'all_predictions': data.get('all_predictions', []),
             'timestamp': firestore.SERVER_TIMESTAMP
         })
+        print("Data saved to Firestore")
         return True
     except Exception as e:
-        print("Firestore error:", e)
+        print(f"Error saving to Firestore: {str(e)}")
         return False
 
 @app.route('/', methods=['GET', 'POST'])
@@ -125,25 +179,31 @@ def upload_file():
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
-        if file.filename == '' or not allowed_file(file.filename):
+        if file.filename == '':
             return redirect(request.url)
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        file.save(filepath)
-        prediction, confidence, all_probabilities = predict_image(filepath)
-        report_data = {
-            'college': "K.L.N. COLLEGE OF ENGINEERING",
-            'department': "ELECTRONICS AND COMMUNICATION ENGINEERING",
-            'date': datetime.now().strftime("%d-%m-%Y"),
-            'time': datetime.now().strftime("%I:%M %p"),
-            'prediction': prediction,
-            'confidence': round(confidence, 2),
-            'all_probabilities': all_probabilities,
-            'image_filename': filename
-        }
-        if db: save_to_firestore(report_data)
-        return render_template('result.html', report=report_data)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            file.save(filepath)
+
+            prediction, confidence, all_predictions = predict_image(filepath)
+            confidence_percent = round(confidence, 2)
+
+            report_data = {
+                'college': "K.L.N. COLLEGE OF ENGINEERING",
+                'department': "ELECTRONICS AND COMMUNICATION ENGINEERING",
+                'date': datetime.now().strftime("%d-%m-%Y"),
+                'time': datetime.now().strftime("%I:%M %p"),
+                'prediction': prediction,
+                'confidence': confidence_percent,
+                'all_predictions': all_predictions,
+                'image_filename': filename
+            }
+
+            save_to_firestore(report_data)
+            return render_template('result.html', report=report_data)
+    
     return render_template('upload.html')
 
 @app.route('/history')
@@ -151,37 +211,54 @@ def history():
     results = []
     if db:
         try:
-            docs = db.collection('poultry_results').order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+            docs = db.collection('poultry_results')\
+                     .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                     .stream()
             for doc in docs:
                 data = doc.to_dict()
-                try:
-                    # Format Firestore timestamp if present
-                    if 'timestamp' in data:
-                        timestamp = data['timestamp']
-                        # Google's Firestore 'timestamp' is a datetime object
-                        if hasattr(timestamp, 'strftime'):
-                            data['date'] = timestamp.strftime("%d-%m-%Y")
-                            data['time'] = timestamp.strftime("%I:%M %p")
-                except Exception:
-                    data['date'] = data.get('date', '')
-                    data['time'] = data.get('time', '')
+                if 'timestamp' in data:
+                    timestamp = data['timestamp']
+                    data['date'] = timestamp.strftime("%d-%m-%Y")
+                    data['time'] = timestamp.strftime("%I:%M %p")
                 results.append(data)
         except Exception as e:
-            print("Error loading history:", e)
+            print(f"Error fetching history: {str(e)}")
     return render_template('history.html', results=results)
 
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'RUNNING',
-        'model_loaded': model is not None,
-        'firebase': db is not None,
-        'classes': class_names
-    })
+@app.route('/download')
+def download():
+    results = []
+    if db:
+        try:
+            docs = db.collection('poultry_results').stream()
+            results = [doc.to_dict() for doc in docs]
+        except Exception as e:
+            print(f"Error downloading data: {str(e)}")
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Time', 'Prediction', 'Confidence', 'College', 'Department'])
+    
+    for result in results:
+        writer.writerow([
+            result.get('date', ''),
+            result.get('time', ''),
+            result.get('prediction', ''),
+            f"{result.get('confidence', 0)}%",
+            result.get('college', ''),
+            result.get('department', '')
+        ])
+    
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = 'attachment; filename=poultry_results.csv'
+    response.headers['Content-type'] = 'text/csv'
+    return response
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     port = int(os.environ.get('PORT', 5000))
-    print("🚀 Flask App Started Successfully!")
-    print("🎯 Model status:", "LOADED" if model else "NOT LOADED")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
