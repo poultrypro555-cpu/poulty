@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Dashboard - Poultry Farm Monitoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .nav-brand {
+            font-weight: 600;
+        }
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            border: none;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        .sensor-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .status-online { color: #28a745; }
+        .status-offline { color: #dc3545; }
+        .alert-card {
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand nav-brand" href="/">
+                <i class="fas fa-feather me-2"></i>Poultry Monitor
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-microscope me-1"></i>Disease Detection
+                </a>
+                <a class="nav-link active" href="/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>Live Dashboard
+                </a>
+                <a class="nav-link" href="/sensor-history">
+                    <i class="fas fa-sensor me-1"></i>Sensor Values
+                </a>
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history me-1"></i>Analysis History
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="dashboard-card p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h2 class="mb-1"><i class="fas fa-tachometer-alt me-2"></i>Live Dashboard</h2>
+                            <p class="text-muted mb-0">Real-time monitoring of your poultry farm environment</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="badge {% if sensor_data.device_status == 'online' %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                                <i class="fas fa-circle me-1"></i>
+                                Device: {{ sensor_data.device_status|upper }}
+                            </span>
+                            <div class="mt-2">
+                                <small class="text-muted">Last Update: {{ sensor_data.last_update }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Sensor Values -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="dashboard-card text-center p-4">
+                    <i class="fas fa-thermometer-half fa-3x text-danger mb-3"></i>
+                    <h4>Temperature</h4>
+                    <div class="sensor-value text-danger">{{ "%.1f"|format(sensor_data.temperature) }}°C</div>
+                    <div class="mt-2">
+                        {% if sensor_data.temperature > 30 %}
+                        <span class="badge bg-danger">High</span>
+                        {% else %}
+                        <span class="badge bg-success">Normal</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="dashboard-card text-center p-4">
+                    <i class="fas fa-tint fa-3x text-info mb-3"></i>
+                    <h4>Humidity</h4>
+                    <div class="sensor-value text-info">{{ "%.1f"|format(sensor_data.humidity) }}%</div>
+                    <div class="mt-2">
+                        {% if sensor_data.humidity > 80 %}
+                        <span class="badge bg-danger">High</span>
+                        {% else %}
+                        <span class="badge bg-success">Normal</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="dashboard-card text-center p-4">
+                    <i class="fas fa-wind fa-3x text-warning mb-3"></i>
+                    <h4>Air Quality (MQ-2)</h4>
+                    <div class="sensor-value text-warning">{{ sensor_data.mq2_value }}</div>
+                    <div class="mt-2">
+                        {% if sensor_data.mq2_value > 300 %}
+                        <span class="badge bg-danger">Poor</span>
+                        {% else %}
+                        <span class="badge bg-success">Good</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="dashboard-card text-center p-4">
+                    <i class="fas fa-cloud fa-3x text-success mb-3"></i>
+                    <h4>Air Quality (FC-22)</h4>
+                    <div class="sensor-value text-success">{{ sensor_data.fc22_value }}</div>
+                    <div class="mt-2">
+                        {% if sensor_data.fc22_value > 300 or sensor_data.fc22_do == 0 %}
+                        <span class="badge bg-danger">Poor</span>
+                        {% else %}
+                        <span class="badge bg-success">Good</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="row">
+            <!-- Current Alerts -->
+            <div class="col-md-6 mb-4">
+                <div class="dashboard-card alert-card h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Current Alerts</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if alerts %}
+                            {% for alert in alerts %}
+                            <div class="alert alert-warning alert-dismissible fade show mb-2" role="alert">
+                                <strong>{{ alert.type.replace('_', ' ') }}</strong>: {{ alert.message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                <p>No current alerts. All systems normal.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts History -->
+            <div class="col-md-6 mb-4">
+                <div class="dashboard-card h-100">
+                    <div class="card-header bg-transparent">
+                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Alerts</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_alerts %}
+                            {% for alert in recent_alerts %}
+                            <div class="border-bottom pb-2 mb-2">
+                                <small class="text-muted">{{ alert.timestamp | timestamp_to_datetime }}</small>
+                                <div class="fw-bold text-danger">{{ alert.alert_type }}</div>
+                                <small>{{ alert.message }}</small>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                <p>No recent alerts</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header bg-transparent">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <i class="fas fa-microchip fa-2x text-primary mb-2"></i>
+                                <h6>ESP32 Device</h6>
+                                <span class="badge {% if sensor_data.device_status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ sensor_data.device_status|upper }}
+                                </span>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <i class="fas fa-database fa-2x text-info mb-2"></i>
+                                <h6>Firebase</h6>
+                                <span class="badge bg-success">CONNECTED</span>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <i class="fas fa-robot fa-2x text-warning mb-2"></i>
+                                <h6>AI Model</h6>
+                                <span class="badge bg-success">LOADED</span>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <i class="fas fa-wifi fa-2x text-success mb-2"></i>
+                                <h6>Network</h6>
+                                <span class="badge bg-success">ONLINE</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-refresh every 10 seconds for live dashboard
+        setInterval(() => {
+            window.location.reload();
+        }, 10000);
+    </script>
+</body>
+</html>

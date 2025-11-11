@@ -13,12 +13,12 @@
             padding: 20px;
         }
         .report-card {
-            max-width: 500px;
+            max-width: 600px;
             margin: 20px auto;
             background: white;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 20px;
+            padding: 25px;
         }
         .report-header {
             text-align: center;
@@ -35,7 +35,7 @@
             font-weight: 400;
         }
         .result-badge {
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             text-align: center;
             margin: 20px 0;
@@ -48,6 +48,11 @@
             border: 2px solid #e74c3c;
             color: #e74c3c;
         }
+        .result-badge.uncertain {
+            background-color: rgba(243, 156, 18, 0.1);
+            border: 2px solid #f39c12;
+            color: #f39c12;
+        }
         .confidence-meter {
             margin: 25px 0;
         }
@@ -59,34 +64,95 @@
             font-size: 0.8rem;
         }
         .meter-bar {
-            height: 10px;
+            height: 12px;
             background: #ecf0f1;
-            border-radius: 5px;
+            border-radius: 6px;
             overflow: hidden;
         }
         .meter-fill {
             height: 100%;
             background: linear-gradient(90deg, #3498db, #2ecc71);
-            border-radius: 5px;
+            border-radius: 6px;
             width: 0;
-            transition: width 1s;
+            transition: width 1s ease-in-out;
         }
         .confidence-value {
             text-align: right;
             margin-top: 5px;
             font-weight: 500;
         }
+        
+        /* Probability Breakdown Styles */
+        .probability-breakdown {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .probability-breakdown h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .progress-item {
+            margin: 15px 0;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+        }
+        .progress {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-in-out;
+        }
+        .coccidiosis-bar { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        .healthy-bar { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+        .salmonella-bar { background: linear-gradient(90deg, #3498db, #2980b9); }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status-warning {
+            background: rgba(243, 156, 18, 0.1);
+            border: 1px solid #f39c12;
+            color: #d35400;
+        }
+        .status-info {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid #3498db;
+            color: #2980b9;
+        }
+        
         .action-buttons {
             display: flex;
             justify-content: space-between;
             margin-top: 25px;
+            gap: 10px;
         }
         .btn {
-            padding: 10px 20px;
+            padding: 12px 25px;
             border-radius: 5px;
             text-decoration: none;
             font-weight: 500;
             transition: all 0.3s;
+            text-align: center;
+            flex: 1;
         }
         .btn-primary {
             background: #3498db;
@@ -102,6 +168,28 @@
         }
         .btn-outline:hover {
             background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        
+        .prediction-details {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        @media (max-width: 480px) {
+            .report-card {
+                margin: 10px;
+                padding: 15px;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .btn {
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
@@ -114,17 +202,41 @@
 
         <div style="text-align: center; margin-bottom: 20px;">
             <h3>ANALYSIS REPORT</h3>
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <span>DATE: {{ report.date }}</span>
                 <span>TIME: {{ report.time }}</span>
             </div>
         </div>
 
-        <div class="result-badge {{ 'disease' if report.prediction != 'HEALTHY' else '' }}">
+        <!-- Status Messages for Uncertain Predictions -->
+        {% if "POSSIBLE" in report.prediction or "UNCERTAIN" in report.prediction %}
+        <div class="status-message status-warning">
+            ⚠️ {{ report.prediction }}
+        </div>
+        {% elif report.confidence < 70 %}
+        <div class="status-message status-info">
+            ℹ️ Low Confidence - Please verify with additional tests
+        </div>
+        {% endif %}
+
+        <div class="result-badge 
+            {% if 'HEALTHY' in report.prediction %} 
+            {% elif 'POSSIBLE' in report.prediction or 'UNCERTAIN' in report.prediction %} uncertain
+            {% else %} disease 
+            {% endif %}">
             <div style="font-size: 0.9rem;">OUTPUT</div>
-            <div style="font-size: 1.5rem; font-weight: 600;">{{ report.prediction }}</div>
+            <div style="font-size: 1.5rem; font-weight: 600;">
+                {% if "POSSIBLE" in report.prediction %}
+                    SALMONELLA (Possible)
+                {% elif "UNCERTAIN" in report.prediction %}
+                    UNCERTAIN
+                {% else %}
+                    {{ report.prediction }}
+                {% endif %}
+            </div>
         </div>
 
+        <!-- Main Confidence Meter -->
         <div class="confidence-meter">
             <div class="meter-labels">
                 <span>0%</span>
@@ -132,26 +244,111 @@
                 <span>100%</span>
             </div>
             <div class="meter-bar">
-                <div class="meter-fill" style="width: {{ report.confidence }}%"></div>
+                <div class="meter-fill" id="mainConfidenceMeter" style="width: 0%"></div>
             </div>
             <div class="confidence-value">
                 Confidence: {{ report.confidence }}%
             </div>
         </div>
 
+        <!-- Detailed Probability Breakdown -->
+        {% if report.all_probabilities %}
+        <div class="probability-breakdown">
+            <h3>📊 Detailed Probability Analysis</h3>
+            
+            <!-- COCCIDIOSIS -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>COCCIDIOSIS</span>
+                    <span>{{ "%.1f"|format(report.all_probabilities.get('COCCIDIOSIS', 0)) }}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar coccidiosis-bar" 
+                         style="width: 0%" 
+                         data-width="{{ report.all_probabilities.get('COCCIDIOSIS', 0) }}"></div>
+                </div>
+            </div>
+            
+            <!-- HEALTHY -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>HEALTHY</span>
+                    <span>{{ "%.1f"|format(report.all_probabilities.get('HEALTHY', 0)) }}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar healthy-bar" 
+                         style="width: 0%" 
+                         data-width="{{ report.all_probabilities.get('HEALTHY', 0) }}"></div>
+                </div>
+            </div>
+            
+            <!-- SALMONELLA -->
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>SALMONELLA</span>
+                    <span>{{ "%.1f"|format(report.all_probabilities.get('SALMONELLA', 0)) }}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar salmonella-bar" 
+                         style="width: 0%" 
+                         data-width="{{ report.all_probabilities.get('SALMONELLA', 0) }}"></div>
+                </div>
+            </div>
+            
+            <!-- Prediction Insights -->
+            <div class="prediction-details">
+                <strong>Analysis Insights:</strong><br>
+                {% set max_prob = report.all_probabilities.values()|max %}
+                {% set max_class = report.all_probabilities.keys()|selectattr('value', 'equalto', max_prob)|first %}
+                
+                {% if report.all_probabilities.get('SALMONELLA', 0) > 25 and report.prediction != 'SALMONELLA' %}
+                • Salmonella detection shows significant probability ({{ "%.1f"|format(report.all_probabilities.get('SALMONELLA', 0)) }}%)<br>
+                {% endif %}
+                
+                {% if report.confidence < 60 %}
+                • Confidence level suggests verification needed<br>
+                {% endif %}
+                
+                • Top prediction: {{ report.prediction }} ({{ report.confidence }}% confidence)
+            </div>
+        </div>
+        {% endif %}
+
         <div class="action-buttons">
-            <a href="/" class="btn btn-outline">New Analysis</a>
-            <a href="/history" class="btn btn-primary">View History</a>
+            <a href="/" class="btn btn-outline">🔄 New Analysis</a>
+            <a href="/history" class="btn btn-primary">📊 View History</a>
         </div>
     </div>
 
     <script>
-        // Animate confidence meter
         document.addEventListener('DOMContentLoaded', function() {
-            const meter = document.querySelector('.meter-fill');
+            // Animate main confidence meter
+            const mainMeter = document.getElementById('mainConfidenceMeter');
+            const confidence = {{ report.confidence }};
+            
             setTimeout(() => {
-                meter.style.width = meter.style.width;
-            }, 100);
+                mainMeter.style.width = confidence + '%';
+            }, 300);
+            
+            // Animate probability bars
+            const progressBars = document.querySelectorAll('.progress-bar');
+            progressBars.forEach(bar => {
+                const width = bar.getAttribute('data-width');
+                setTimeout(() => {
+                    bar.style.width = width + '%';
+                }, 500);
+            });
+            
+            // Add loading animation
+            const reportCard = document.querySelector('.report-card');
+            reportCard.style.opacity = '0';
+            reportCard.style.transform = 'translateY(20px)';
+            reportCard.style.transition = 'all 0.5s ease';
+            
+            setTimeout(() => {
+                reportCard.style.opacity = '1';
+                reportCard.style.transform = 'translateY(0)';
+            }, 200);
         });
     </script>
 </body>

@@ -3,161 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poultry Disease Classifier</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>Poultry Disease Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #1e88e5;
-            --healthy: #4caf50;
-            --disease: #f44336;
-            --light: #f5f5f5;
-            --dark: #212121;
-            --border: #e0e0e0;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-        
         body {
-            background-color: #f9f9f9;
-            color: var(--dark);
-            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
+        .nav-brand {
+            font-weight: 600;
         }
-        
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        h2 {
-            color: var(--secondary);
-            font-size: 1.2rem;
-            font-weight: 400;
-            margin-bottom: 1.5rem;
-        }
-        
-        .upload-box {
+        .upload-container {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 2rem;
-            text-align: center;
-        }
-        
-        .upload-icon {
-            font-size: 3rem;
-            color: var(--secondary);
-            margin-bottom: 1rem;
-        }
-        
-        .upload-box h3 {
-            font-size: 1.3rem;
-            margin-bottom: 0.5rem;
-            color: var(--primary);
-        }
-        
-        .upload-box p {
-            color: #666;
-            margin-bottom: 1.5rem;
-        }
-        
-        #file-upload {
-            display: none;
-        }
-        
-        .custom-upload-btn {
-            display: inline-block;
-            background: var(--secondary);
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-        
-        .custom-upload-btn:hover {
-            background: #1565c0;
-            transform: translateY(-2px);
-        }
-        
-        .submit-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.8rem 2rem;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
-            width: 100%;
-            max-width: 200px;
-        }
-        
-        .submit-btn:hover {
-            background: #1a237e;
-            transform: translateY(-2px);
-        }
-        
-        footer {
-            text-align: center;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 3rem;
             margin-top: 2rem;
-            color: #666;
-            font-size: 0.9rem;
         }
-        
-        /* Animation */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 1rem;
         }
-        
-        .animated {
-            animation: fadeIn 0.6s ease-out;
+        .btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+        }
+        .quick-links {
+            margin-top: 3rem;
+        }
+        .quick-link-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+            border: none;
+            text-align: center;
+        }
+        .quick-link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="animated">
-            <h1>K.L.N. COLLEGE OF ENGINEERING</h1>
-            <h2>DEPARTMENT OF ELECTRONICS AND COMMUNICATION ENGINEERING</h2>
-        </header>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand nav-brand" href="/">
+                <i class="fas fa-feather me-2"></i>Poultry Monitor
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/">
+                    <i class="fas fa-microscope me-1"></i>Disease Detection
+                </a>
+                <a class="nav-link" href="/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>Live Dashboard
+                </a>
+                <a class="nav-link" href="/sensor-history">
+                    <i class="fas fa-sensor me-1"></i>Sensor Values
+                </a>
+                <a class="nav-link" href="/history">
+                    <i class="fas fa-history me-1"></i>Analysis History
+                </a>
+            </div>
+        </div>
+    </nav>
 
-        <div class="upload-box animated">
-            <div class="upload-icon">📁</div>
-            <h3>POULTRY DISEASE CLASSIFIER</h3>
-            <p>Upload an image of poultry for disease analysis</p>
+    <div class="container">
+        <div class="text-center text-white mb-4">
+            <h1 class="display-5 fw-bold">K.L.N. COLLEGE OF ENGINEERING</h1>
+            <h3 class="fw-normal">DEPARTMENT OF ELECTRONICS AND COMMUNICATION ENGINEERING</h3>
+        </div>
+
+        <div class="upload-container text-center">
+            <div class="upload-icon">🔍</div>
+            <h2 class="mb-3">POULTRY DISEASE CLASSIFIER</h2>
+            <p class="text-muted mb-4">Upload an image of poultry for AI-powered disease analysis</p>
             
-            <form action="/" method="post" enctype="multipart/form-data">
-                <input type="file" id="file-upload" name="file" accept="image/*" required>
-                <label for="file-upload" class="custom-upload-btn">Choose Image</label>
-                <button type="submit" class="submit-btn">Analyze</button>
+            <form action="/" method="post" enctype="multipart/form-data" id="uploadForm">
+                <input type="file" id="fileInput" name="file" accept="image/*" required hidden>
+                <button type="button" class="btn btn-upload btn-lg text-white mb-3" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>Choose Image File
+                </button>
+                <div id="fileName" class="text-muted mb-3"></div>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-search me-2"></i>Analyze Image
+                </button>
             </form>
         </div>
 
-        <footer>
-            <p>© 2025 Poultry Project | ECE Department</p>
-        </footer>
+        <!-- Quick Links -->
+        <div class="quick-links">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <a href="/dashboard" class="quick-link-card d-block">
+                        <i class="fas fa-tachometer-alt fa-3x text-primary mb-3"></i>
+                        <h5>Live Dashboard</h5>
+                        <p class="text-muted">Real-time sensor monitoring</p>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="/sensor-history" class="quick-link-card d-block">
+                        <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+                        <h5>Sensor Values</h5>
+                        <p class="text-muted">Historical sensor data</p>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="/history" class="quick-link-card d-block">
+                        <i class="fas fa-history fa-3x text-info mb-3"></i>
+                        <h5>Analysis History</h5>
+                        <p class="text-muted">Past disease analysis</p>
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Show selected file name
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileName = this.files[0] ? this.files[0].name : 'No file chosen';
+            document.getElementById('fileName').textContent = `Selected: ${fileName}`;
+        });
+
+        // Form submission loading state
+        document.getElementById('uploadForm').addEventListener('submit', function() {
+            const submitBtn = this.querySelector('.btn-success');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing...';
+            submitBtn.disabled = true;
+        });
+    </script>
 </body>
 </html>
