@@ -8,3 +8,4 @@ matplotlib==3.9.2
 firebase-admin==6.5.0
 python-dotenv==1.0.1
 werkzeug==3.0.4
+tqdm==4.65.0
