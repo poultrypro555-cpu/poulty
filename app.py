@@ -58,8 +58,7 @@ sensor_data = {
     'fc22_value': 0,
     'fc22_do': 1,
     'last_update': None,
-    'alerts': [],
-    'device_status': 'offline'
+    'alerts': []
 }
 
 # Model loading with Google Drive integration
@@ -450,35 +449,12 @@ def dashboard():
         latest_data = get_realtime_sensor_data()
         
         if latest_data:
-            # Check if data is fresh (within last 5 minutes)
-            current_time = datetime.now()
-            data_timestamp = latest_data.get('timestamp', 0)
-            
-            # If timestamp is in milliseconds, convert to seconds
-            if data_timestamp > 1000000000000:
-                data_timestamp = data_timestamp / 1000
-            
-            # Calculate time difference in minutes
-            if data_timestamp > 0:
-                time_diff_minutes = (current_time.timestamp() - data_timestamp) / 60
-                is_fresh_data = time_diff_minutes <= 5  # Data is fresh if within 5 minutes
-            else:
-                # If no timestamp, assume data might be stale
-                is_fresh_data = False
-            
+            # Simply update sensor data with latest values
             sensor_data.update(latest_data)
             sensor_data['last_update'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Set device status based on data freshness
-            if is_fresh_data:
-                sensor_data['device_status'] = 'online'
-            else:
-                sensor_data['device_status'] = 'offline (stale data)'
-                
             sensor_data['alerts'] = check_alerts(latest_data)
         else:
-            sensor_data['device_status'] = 'offline (no data)'
-            sensor_data['last_update'] = 'Never'
+            sensor_data['last_update'] = 'No data'
             sensor_data['alerts'] = []
         
         # Get recent alerts
@@ -490,8 +466,6 @@ def dashboard():
                              recent_alerts=recent_alerts)
     except Exception as e:
         print(f"Error in dashboard route: {e}")
-        # Return basic dashboard even if there's an error
-        sensor_data['device_status'] = 'offline (error)'
         return render_template('dashboard.html', 
                              sensor_data=sensor_data,
                              alerts=[],
@@ -504,11 +478,9 @@ def sensor_history():
     if latest_data:
         sensor_data.update(latest_data)
         sensor_data['last_update'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sensor_data['device_status'] = 'online'
         sensor_data['alerts'] = check_alerts(latest_data)
     else:
-        sensor_data['device_status'] = 'offline'
-        sensor_data['last_update'] = 'Never'
+        sensor_data['last_update'] = 'No data'
     
     # Get sensor history
     history_data = get_sensor_history(limit=20)
@@ -526,14 +498,12 @@ def api_sensor_data():
         return jsonify({
             'status': 'success',
             'data': latest_data,
-            'device_status': 'online',
             'last_update': datetime.now().isoformat()
         })
     else:
         return jsonify({
             'status': 'error',
-            'message': 'No data available',
-            'device_status': 'offline'
+            'message': 'No data available'
         })
 
 @app.route('/api/sensor-alerts')
