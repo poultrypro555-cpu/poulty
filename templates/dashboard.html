@@ -29,8 +29,6 @@
             font-size: 2.5rem;
             font-weight: bold;
         }
-        .status-online { color: #28a745; }
-        .status-offline { color: #dc3545; }
         .alert-card {
             border-left: 4px solid #ffc107;
         }
@@ -71,12 +69,8 @@
                             <p class="text-muted mb-0">Real-time monitoring of your poultry farm environment</p>
                         </div>
                         <div class="col-md-6 text-end">
-                            <span class="badge {% if sensor_data.device_status == 'online' %}bg-success{% else %}bg-danger{% endif %} fs-6">
-                                <i class="fas fa-circle me-1"></i>
-                                Device: {{ sensor_data.device_status|upper }}
-                            </span>
                             <div class="mt-2">
-                                <small class="text-muted">Last Update: {{ sensor_data.last_update }}</small>
+                                <small class="text-muted"></small>
                             </div>
                         </div>
                     </div>
@@ -205,24 +199,17 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3 text-center">
-                                <i class="fas fa-microchip fa-2x text-primary mb-2"></i>
-                                <h6>ESP32 Device</h6>
-                                <span class="badge {% if sensor_data.device_status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
-                                    {{ sensor_data.device_status|upper }}
-                                </span>
-                            </div>
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-4 text-center">
                                 <i class="fas fa-database fa-2x text-info mb-2"></i>
                                 <h6>Firebase</h6>
                                 <span class="badge bg-success">CONNECTED</span>
                             </div>
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-4 text-center">
                                 <i class="fas fa-robot fa-2x text-warning mb-2"></i>
                                 <h6>AI Model</h6>
                                 <span class="badge bg-success">LOADED</span>
                             </div>
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-4 text-center">
                                 <i class="fas fa-wifi fa-2x text-success mb-2"></i>
                                 <h6>Network</h6>
                                 <span class="badge bg-success">ONLINE</span>
